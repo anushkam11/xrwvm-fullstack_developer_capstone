@@ -33,6 +33,17 @@ ibmcloud ce application create --name cars-dealership \
   --cpu 1 --memory 2G --min-scale 1 --max-scale 1
 ```
 
+If the lab account cannot create the build registry policy, use the tested
+GitHub Actions image from GHCR. For a public package, run:
+
+```sh
+ibmcloud ce application create --name cars-dealership \
+  --image ghcr.io/anushkam11/cars-dealership-capstone:latest --port 8080 \
+  --cpu 1 --memory 2G --min-scale 1 --max-scale 1
+```
+
+For a private package, [configure a registry secret](https://cloud.ibm.com/docs/codeengine?topic=codeengine-add-registry)
+and add `--registry-secret SECRET_NAME` to the command.
 Run `ibmcloud ce application get --name cars-dealership` to retrieve the URL.
 This single-instance demo stores SQLite and MongoDB data on the container's
 temporary disk. Accounts and reviews reset when the instance is replaced.
