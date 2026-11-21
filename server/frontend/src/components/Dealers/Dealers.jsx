@@ -1,96 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import "./Dealers.css";
-import "../assets/style.css";
-import Header from '../Header/Header';
-import review_icon from "../assets/reviewicon.png"
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { api } from '../../api';
 
-const Dealers = () => {
-  const [dealersList, setDealersList] = useState([]);
-  // let [state, setState] = useState("")
-  let [states, setStates] = useState([])
+export default function Dealers({ username }) {
+  const [params, setParams] = useSearchParams();
+  const selected = params.get('state') || '';
+  const [dealers, setDealers] = useState(null);
+  const [states, setStates] = useState([]);
+  const [error, setError] = useState('');
 
-  // let root_url = window.location.origin
-  let dealer_url ="/djangoapp/get_dealers";
-  
-  let dealer_url_by_state = "/djangoapp/get_dealers/";
- 
-  const filterDealers = async (state) => {
-    dealer_url_by_state = dealer_url_by_state+state;
-    const res = await fetch(dealer_url_by_state, {
-      method: "GET"
-    });
-    const retobj = await res.json();
-    if(retobj.status === 200) {
-      let state_dealers = Array.from(retobj.dealers)
-      setDealersList(state_dealers)
-    }
-  }
-
-  const get_dealers = async ()=>{
-    const res = await fetch(dealer_url, {
-      method: "GET"
-    });
-    const retobj = await res.json();
-    if(retobj.status === 200) {
-      let all_dealers = Array.from(retobj.dealers)
-      let states = [];
-      all_dealers.forEach((dealer)=>{
-        states.push(dealer.state)
-      });
-
-      setStates(Array.from(new Set(states)))
-      setDealersList(all_dealers)
-    }
-  }
   useEffect(() => {
-    get_dealers();
-  },[]);  
+    api('get_dealers').then(({ dealers }) =>
+      setStates([...new Set(dealers.map(dealer => dealer.state))].sort()),
+    ).catch(failure => setError(failure.message));
+  }, []);
 
+  useEffect(() => {
+    let current = true;
+    setDealers(null);
+    setError('');
+    const path = selected ? 'get_dealers/' + encodeURIComponent(selected) : 'get_dealers';
+    api(path).then(result => {
+      if (current) setDealers(result.dealers);
+    }).catch(failure => {
+      if (current) setError(failure.message);
+    });
+    return () => { current = false; };
+  }, [selected]);
 
-let isLoggedIn = sessionStorage.getItem("username") != null ? true : false;
-return(
-  <div>
-      <Header/>
-
-     <table className='table'>
-      <tr>
-      <th>ID</th>
-      <th>Dealer Name</th>
-      <th>City</th>
-      <th>Address</th>
-      <th>Zip</th>
-      <th>
-      <select name="state" id="state" onChange={(e) => filterDealers(e.target.value)}>
-      <option value="" selected disabled hidden>State</option>
-      <option value="All">All States</option>
-      {states.map(state => (
-          <option value={state}>{state}</option>
-      ))}
-      </select>        
-
-      </th>
-      {isLoggedIn ? (
-          <th>Review Dealer</th>
-         ):<></>
-      }
-      </tr>
-     {dealersList.map(dealer => (
-        <tr>
-          <td>{dealer['id']}</td>
-          <td><a href={'/dealer/'+dealer['id']}>{dealer['full_name']}</a></td>
-          <td>{dealer['city']}</td>
-          <td>{dealer['address']}</td>
-          <td>{dealer['zip']}</td>
-          <td>{dealer['state']}</td>
-          {isLoggedIn ? (
-            <td><a href={`/postreview/${dealer['id']}`}><img src={review_icon} className="review_icon" alt="Post Review"/></a></td>
-           ):<></>
-          }
-        </tr>
-      ))}
-     </table>;
-  </div>
-)
+  return <>
+    <div className="page-heading">
+      <h1>Find a dealership</h1>
+      <div><label htmlFor="dealer-state">State </label><select id="dealer-state" value={selected} onChange={event => setParams(event.target.value ? { state: event.target.value } : {})}>
+        <option value="">All states</option>
+        {states.map(state => <option key={state}>{state}</option>)}
+      </select></div>
+    </div>
+    {error ? <p role="alert">{error}</p> : !dealers ? <p>Loading dealerships…</p> :
+      dealers.length === 0 ? <p>No dealerships found.</p> :
+      <div className="panel table-wrap"><table>
+        <thead><tr><th>Dealer</th><th>City</th><th>Address</th><th>ZIP</th><th>State</th>
+          {username && <th>Review Dealer</th>}</tr></thead>
+        <tbody>{dealers.map(dealer => <tr key={dealer.id}>
+          <td><Link to={'/dealer/' + dealer.id}>{dealer.full_name}</Link></td>
+          <td>{dealer.city}</td><td>{dealer.address}</td><td>{dealer.zip}</td><td>{dealer.state}</td>
+          {username && <td><Link to={'/postreview/' + dealer.id}>Review Dealer</Link></td>}
+        </tr>)}</tbody>
+      </table></div>}
+  </>;
 }
-
-export default Dealers

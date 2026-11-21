@@ -1,0 +1,39 @@
+name: Capstone CI/CD
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the project
+        uses: actions/checkout@v4
+      - name: Build and start the services
+        run: docker compose up --build -d
+      - name: Check Django and migrations
+        run: |
+          docker compose exec -T django python manage.py check
+          docker compose exec -T django python manage.py makemigrations --check --dry-run
+      - name: Run dealership, reviews, catalogue and sentiment smoke checks
+        run: |
+          set -euo pipefail
+          base=http://127.0.0.1:8000
+          curl -fsS --retry 24 --retry-delay 3 --retry-all-errors "$base/djangoapp/get_dealers" | jq -e '.dealers | length > 0'
+          curl -fsS "$base/djangoapp/get_dealers/Kansas" | jq -e '.dealers | length > 0 and all(.state == "Kansas")'
+          curl -fsS "$base/djangoapp/dealer/8" | jq -e '.dealer[0].id == 8'
+          curl -fsS "$base/djangoapp/reviews/dealer/8" | jq -e '.reviews | type == "array"'
+          curl -fsS "$base/djangoapp/get_cars" | jq -e '(.CarMakes | length > 0) and (.CarModels | length > 0)'
+          curl -fsS "$base/" | grep -q 'id="root"'
+          docker compose exec -T sentiment python -c 'import urllib.request; assert b"positive" in urllib.request.urlopen("http://localhost:5050/analyze/Fantastic%20services").read()'
+      - name: Collect service logs
+        if: always()
+        run: docker compose logs
+      - name: Shut down services
+        if: always()
+        run: docker compose down -v

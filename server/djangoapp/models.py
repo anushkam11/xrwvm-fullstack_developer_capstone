@@ -1,25 +1,33 @@
-# Uncomment the following imports before adding the Model code
-
-# from django.db import models
-# from django.utils.timezone import now
-# from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
-# Create your models here.
+class CarMake(models.Model):
+    name = models.CharField(max_length=80, unique=True)
+    description = models.TextField(blank=True)
 
-# <HINT> Create a Car Make model `class CarMake(models.Model)`:
-# - Name
-# - Description
-# - Any other fields you would like to include in car make model
-# - __str__ method to print a car make object
+    def __str__(self):
+        return self.name
 
 
-# <HINT> Create a Car Model model `class CarModel(models.Model):`:
-# - Many-To-One relationship to Car Make model (One Car Make has many
-# Car Models, using ForeignKey field)
-# - Name
-# - Type (CharField with a choices argument to provide limited choices
-# such as Sedan, SUV, WAGON, etc.)
-# - Year (IntegerField) with min value 2015 and max value 2023
-# - Any other fields you would like to include in car model
-# - __str__ method to print a car make object
+class CarModel(models.Model):
+    class BodyType(models.TextChoices):
+        SEDAN = 'Sedan'
+        SUV = 'SUV'
+        WAGON = 'Wagon'
+        COUPE = 'Coupe'
+        TRUCK = 'Truck'
+        HATCHBACK = 'Hatchback'
+        VAN = 'Van'
+        CONVERTIBLE = 'Convertible'
+
+    make = models.ForeignKey(CarMake, on_delete=models.CASCADE, related_name='models')
+    name = models.CharField(max_length=80)
+    type = models.CharField(max_length=20, choices=BodyType.choices)
+    year = models.PositiveSmallIntegerField(validators=[MinValueValidator(2015), MaxValueValidator(2023)])
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['make', 'name', 'year'], name='unique_car_model_year')]
+
+    def __str__(self):
+        return f'{self.make} {self.name} ({self.year})'
