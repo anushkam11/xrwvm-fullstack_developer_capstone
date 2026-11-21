@@ -37,3 +37,22 @@ jobs:
       - name: Shut down services
         if: always()
         run: docker compose down -v
+
+  verify-code-engine-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the project
+        uses: actions/checkout@v4
+      - name: Build the Code Engine demo image
+        run: docker build -f Dockerfile.codeengine -t capstone-code-engine .
+      - name: Start the image and check the public HTTP port
+        run: |
+          set -euo pipefail
+          docker run -d --name capstone-code-engine -e DJANGO_HTTPS=0 -p 127.0.0.1:8080:8080 capstone-code-engine
+          base=http://127.0.0.1:8080
+          curl -fsS --retry 30 --retry-delay 2 --retry-all-errors "$base/" | grep -q 'id="root"'
+          curl -fsS "$base/djangoapp/get_dealers/Kansas" | jq -e '.dealers[0].state == "Kansas"'
+          curl -fsS "$base/djangoapp/reviews/dealer/15" | jq -e '.reviews | length > 0'
+      - name: Show container logs
+        if: always()
+        run: docker logs capstone-code-engine

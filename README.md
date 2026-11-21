@@ -19,3 +19,20 @@ Dockerfiles in this repository. Configure `backend_url`, `sentiment_analyzer_url
 `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and `DJANGO_DEBUG=0` for the Django
 service. Keep the service URLs and MongoDB connection private. Mount persistent
 storage for SQLite and MongoDB. Django listens on `PORT` (8000 by default).
+
+### Skills Network Code Engine demo
+
+In the lab's **Code Engine CLI** terminal, run the following command to build
+the application from the public GitHub repository and deploy it alongside
+the other apps in the selected project.
+
+```sh
+ibmcloud ce application create --name cars-dealership \
+  --build-source https://github.com/anushkam11/xrwvm-fullstack_developer_capstone \
+  --build-dockerfile Dockerfile.codeengine --port 8080 \
+  --cpu 1 --memory 2G --min-scale 1 --max-scale 1
+```
+
+Run `ibmcloud ce application get --name cars-dealership` to retrieve the URL.
+This single-instance demo stores SQLite and MongoDB data on the container's
+temporary disk. Accounts and reviews reset when the instance is replaced.
